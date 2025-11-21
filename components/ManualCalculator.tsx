@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Calculator, ArrowRight, CheckCircle2, RotateCw, Ban } from 'lucide-react';
 import { FABRIC_WIDTHS, CalculationResult } from '../types';
 import { calculateConsumption } from '../utils/calculationLogic';
@@ -10,15 +10,25 @@ export const ManualCalculator: React.FC = () => {
   const [isPatterned, setIsPatterned] = useState(false);
   const [result, setResult] = useState<CalculationResult | null>(null);
 
-  const handleCalculate = (e: React.FormEvent) => {
-    e.preventDefault();
+  // Recálculo automático cuando cambia cualquier input
+  useEffect(() => {
     const w = parseFloat(width);
     const h = parseFloat(height);
     const fw = parseFloat(fabricWidth);
 
-    if (!isNaN(w) && !isNaN(h) && !isNaN(fw)) {
+    if (!isNaN(w) && !isNaN(h) && !isNaN(fw) && w > 0 && h > 0) {
       setResult(calculateConsumption(w, h, fw, isPatterned));
+    } else {
+      // Si los campos están vacíos o inválidos, limpiamos resultado pero no mostramos error
+      if (width === '' || height === '') {
+         setResult(null);
+      }
     }
+  }, [width, height, fabricWidth, isPatterned]);
+
+  const handleCalculate = (e: React.FormEvent) => {
+    e.preventDefault();
+    // El useEffect ya maneja el cálculo, esto es solo para comportamiento de form standard
   };
 
   return (
@@ -91,14 +101,6 @@ export const ManualCalculator: React.FC = () => {
               </div>
             </label>
           </div>
-
-          <button
-            type="submit"
-            className="w-full mt-4 bg-slate-900 hover:bg-indigo-600 text-white font-bold py-3 px-4 rounded-xl transition-all shadow-lg shadow-slate-200 hover:shadow-indigo-200 flex items-center justify-center gap-2 group"
-          >
-            Calcular
-            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-          </button>
         </form>
       </div>
 
@@ -107,7 +109,7 @@ export const ManualCalculator: React.FC = () => {
         {!result ? (
            <div className="text-center opacity-30 select-none">
              <Calculator className="w-16 h-16 mx-auto mb-4 text-slate-400" />
-             <p className="text-slate-500 font-medium">Introduce medidas para calcular</p>
+             <p className="text-slate-500 font-medium">Introduce medidas para ver resultados en tiempo real</p>
            </div>
         ) : !result.isValid ? (
            <div className="bg-red-50 border border-red-100 rounded-xl p-6 text-center animate-fadeIn">

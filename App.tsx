@@ -39,14 +39,15 @@ function App() {
 
   // Effect to re-calculate when global settings change
   useEffect(() => {
-    if (items.length > 0) {
-      const recalculatedItems = items.map(item => ({
+    setItems(prevItems => {
+      if (prevItems.length === 0) return prevItems;
+      
+      return prevItems.map(item => ({
         ...item,
         results: calculateAllWidths(item.width, item.height, isPatterned)
       }));
-      setItems(recalculatedItems);
-    }
-  }, [isPatterned]); // Dependencia crítica: Recalcular al cambiar el switch
+    });
+  }, [isPatterned]); 
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (auditFailed) return;
