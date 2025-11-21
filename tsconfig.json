@@ -19,11 +19,12 @@
     "allowSyntheticDefaultImports": true
   },
   "include": [
+    "vite-env.d.ts",
     "index.tsx",
     "App.tsx",
     "types.ts",
     "components/**/*",
     "utils/**/*"
   ],
-  "exclude": ["node_modules", "vite.config.ts", "dist"]
+  "exclude": ["node_modules", "vite.config.js", "vite.config.ts", "dist"]
 }
