@@ -116,7 +116,7 @@ export const ResultsTable: React.FC<Props> = ({ items, onDownload }) => {
   if (items.length === 0) return null;
 
   return (
-    <div className="bg-white rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-200 flex flex-col h-[600px] md:h-[calc(100vh-280px)] min-h-[400px] animate-fadeIn relative overflow-hidden">
+    <div className="bg-white rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-200 flex flex-col h-[calc(100dvh-200px)] md:h-[calc(100vh-280px)] min-h-[400px] animate-fadeIn relative overflow-hidden">
       
       {/* === MODAL DE DETALLE (AUDIT TICKET) === */}
       {selectedCell && (
