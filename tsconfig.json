@@ -16,7 +16,8 @@
     "noUnusedParameters": false,
     "noFallthroughCasesInSwitch": true,
     "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true
+    "allowSyntheticDefaultImports": true,
+    "allowJs": false
   },
   "include": [
     "vite-env.d.ts",
@@ -26,5 +27,5 @@
     "components/**/*",
     "utils/**/*"
   ],
-  "exclude": ["node_modules", "vite.config.js", "vite.config.ts", "dist"]
+  "exclude": ["node_modules", "dist", "vite.config.ts", "vite.config.js", "**/*.spec.ts"]
 }
