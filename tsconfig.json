@@ -18,6 +18,12 @@
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true
   },
-  "include": ["**/*.ts", "**/*.tsx"],
-  "exclude": ["node_modules", "vite.config.ts"]
+  "include": [
+    "index.tsx",
+    "App.tsx",
+    "types.ts",
+    "components/**/*",
+    "utils/**/*"
+  ],
+  "exclude": ["node_modules", "vite.config.ts", "dist"]
 }
