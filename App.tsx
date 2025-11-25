@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Upload, FileSpreadsheet, AlertCircle, Cloud, Save, Loader2, Scissors, Layers, RotateCw, Ban, Calculator, Sparkles } from 'lucide-react';
+import { Upload, FileSpreadsheet, AlertCircle, Cloud, Save, Loader2, Scissors, Layers, RotateCw, Ban, Home, Sparkles } from 'lucide-react';
 import { CushionItem } from './types';
 import { processExcelFile, downloadExcel } from './utils/excelService';
 import { runStrictAudit, calculateAllWidths } from './utils/calculationLogic';
@@ -160,8 +160,8 @@ function App() {
                     : 'text-indigo-200 hover:text-white hover:bg-white/5'
                 }`}
               >
-                <Calculator className="w-4 h-4" />
-                Calculadora
+                <Home className="w-4 h-4" />
+                Inicio
               </button>
               <button
                 onClick={() => setActiveTab('autosku')}
@@ -182,7 +182,7 @@ function App() {
       {/* --- MAIN CONTENT --- */}
       <div className="max-w-7xl mx-auto px-4 md:px-8 -mt-10 relative z-20">
         
-        {/* TABA 1: CALCULADORA TEXTIL */}
+        {/* TAB 1: INICIO (CALCULADORA) */}
         {activeTab === 'calculator' && (
           <div className="animate-fadeIn">
              {/* Controls Bar for Calculator */}

@@ -239,9 +239,9 @@ Cojín cuadrado 45x45 loneta gris`}
              </h4>
              <ul className="text-xs text-blue-700/80 space-y-1 list-disc pl-4">
                <li><strong>Familia:</strong> 4 caracteres fijos (ej. CNSM).</li>
-               <li><strong>Raíz:</strong> 1ª palabra sin vocales (CINTA -> CNT).</li>
+               <li><strong>Raíz:</strong> 1ª palabra sin vocales (CINTA &rarr; CNT).</li>
                <li><strong>Medida:</strong> Dígitos encontrados (25).</li>
-               <li><strong>Atributos:</strong> Iniciales del resto (Doble Cara -> DC).</li>
+               <li><strong>Atributos:</strong> Iniciales del resto (Doble Cara &rarr; DC).</li>
                <li><strong>Límite:</strong> 10 caracteres estricto.</li>
              </ul>
           </div>
