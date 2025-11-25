@@ -298,32 +298,37 @@ Cojín cuadrado 45x45 loneta gris`}
                        </td>
                      </tr>
                    ) : (
-                     generatedItems.map((item, idx) => (
-                       <tr key={idx} className="hover:bg-slate-50/80 transition-colors">
-                         <td className="p-3">
-                           <span className="inline-block px-1.5 py-0.5 rounded border border-slate-200 bg-white text-[10px] font-mono text-slate-500">
-                             {item.family}
-                           </span>
-                         </td>
-                         <td className="p-3">
-                           <div className="flex items-center gap-2">
-                             <span className="font-mono font-bold text-slate-700 text-sm">{item.code}</span>
-                             {item.code.length > 10 ? (
-                               <span className="text-[10px] text-red-500 font-medium bg-red-50 px-1 rounded flex items-center">
-                                 <AlertTriangle className="w-3 h-3 mr-0.5" /> {item.code.length} chars
-                               </span>
-                             ) : (
-                               <span className="text-[10px] text-emerald-500 font-medium bg-emerald-50 px-1 rounded">
-                                 OK
-                               </span>
-                             )}
-                           </div>
-                         </td>
-                         <td className="p-3 text-sm text-slate-600 truncate max-w-xs" title={item.description}>
-                           {item.description}
-                         </td>
-                       </tr>
-                     ))
+                     generatedItems.map((item, idx) => {
+                       // Extracción de lógica condicional fuera del JSX para evitar errores de compilación TS1382
+                       const isLengthValid = item.code.length <= 10;
+                       
+                       return (
+                         <tr key={idx} className="hover:bg-slate-50/80 transition-colors">
+                           <td className="p-3">
+                             <span className="inline-block px-1.5 py-0.5 rounded border border-slate-200 bg-white text-[10px] font-mono text-slate-500">
+                               {item.family}
+                             </span>
+                           </td>
+                           <td className="p-3">
+                             <div className="flex items-center gap-2">
+                               <span className="font-mono font-bold text-slate-700 text-sm">{item.code}</span>
+                               {isLengthValid ? (
+                                 <span className="text-[10px] text-emerald-500 font-medium bg-emerald-50 px-1 rounded">
+                                   OK
+                                 </span>
+                               ) : (
+                                 <span className="text-[10px] text-red-500 font-medium bg-red-50 px-1 rounded flex items-center">
+                                   <AlertTriangle className="w-3 h-3 mr-0.5" /> {item.code.length} chars
+                                 </span>
+                               )}
+                             </div>
+                           </td>
+                           <td className="p-3 text-sm text-slate-600 truncate max-w-xs" title={item.description}>
+                             {item.description}
+                           </td>
+                         </tr>
+                       );
+                     })
                    )}
                  </tbody>
                </table>
