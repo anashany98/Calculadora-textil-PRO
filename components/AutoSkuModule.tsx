@@ -26,89 +26,113 @@ export const FAMILY_DEFINITIONS = [
   { code: "MO", name: "Mano de Obra", examples: "Instalaciones, tapizados" }
 ];
 
-// 2. Algoritmo Determinista (Lógica Estricta JavaScript)
+// 2. Algoritmo Determinista (Lógica Estricta JavaScript) - v2.1
 const generateSkuAlgorithm = (description: string, forcedFamily: string): string => {
-  // A. Limpieza: Mayúsculas y quitar caracteres especiales
+  // A. Limpieza
   const cleanDesc = description.toUpperCase()
-    .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // Quitar acentos
-    .replace(/[^A-Z0-9 ]/g, ''); // Solo letras y números, quitar símbolos
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^A-Z0-9 ]/g, '');
 
-  // Separar palabras ignorando vacías y preposiciones comunes
   const ignoredWords = ['DE', 'CON', 'PARA', 'EL', 'LA', 'LOS', 'LAS', 'Y', 'EN', 'DEL', 'POR'];
   const words = cleanDesc.split(' ').filter(w => w.length > 0 && !ignoredWords.includes(w));
 
   if (words.length === 0) return (forcedFamily + "GEN").slice(0, 10);
 
-  // B. Extracción de Componentes
+  // B. Extracción
   let root = "";
   let numbers = "";
   let attributes = "";
 
-  // 1. Raíz (Primera palabra significativa)
+  // 1. Raíz
   if (words.length > 0) {
     const firstWord = words[0];
-    // Intentar quitar vocales para comprimir
     const noVowels = firstWord.replace(/[AEIOU]/g, '');
-    // Si al quitar vocales queda algo (ej: CINTA->CNT), usarlo. Si no (ej: A), usar original.
     const baseRoot = noVowels.length > 0 ? noVowels : firstWord;
     root = baseRoot.slice(0, 4); 
   }
 
-  // 2. Números (Medidas) -> Buscamos dígitos en toda la cadena original limpia
+  // 2. Medida (Números)
   const allNumbers = cleanDesc.match(/\d+/g);
   if (allNumbers) {
     numbers = allNumbers.join('');
   }
 
-  // 3. Atributos -> Primera letra del resto de palabras
+  // 3. Atributos
   for (let i = 1; i < words.length; i++) {
     const w = words[i];
-    // Si la palabra es SOLO números, ya la procesamos en el paso 2, la saltamos aquí
     if (!/^\d+$/.test(w)) {
       attributes += w.charAt(0);
     }
   }
 
-  // C. Ensamblaje Inicial (Prioridad de orden)
-  // Formato ideal: FAMILIA (4) + RAIZ (hasta 4) + NUMEROS + ATRIBUTOS
-  let sku = forcedFamily + root + numbers + attributes;
+  // C. Ensamblaje (NUEVO ORDEN: Familia + Raíz + Atributos + Medida)
+  let sku = forcedFamily + root + attributes + numbers;
 
-  // D. Truncado Inteligente a 10 Caracteres (Lógica de Prioridad de Corte)
-  // Si nos pasamos de 10, empezamos a recortar lo menos importante
+  // D. Truncado Inteligente (Prioridad de sacrificio: Atributos -> Números -> Raíz)
   if (sku.length > 10) {
     const excess = sku.length - 10;
     
-    // Estrategia 1: Recortar Atributos (lo menos crítico)
     if (attributes.length >= excess) {
+      // Cortar atributos primero
       attributes = attributes.slice(0, attributes.length - excess);
     } else {
-      // Estrategia 2: Si attributes no basta, quitar todos los atributos y atacar Números
       const remainingAfterAttrs = excess - attributes.length;
-      attributes = "";
+      attributes = ""; // Eliminar atributos si no es suficiente
       
       if (numbers.length >= remainingAfterAttrs) {
+        // Cortar números (medida)
         numbers = numbers.slice(0, numbers.length - remainingAfterAttrs);
       } else {
-        // Estrategia 3: Si números no basta, quitar todos números y atacar Raíz (último recurso)
         const remainingAfterNums = remainingAfterAttrs - numbers.length;
-        numbers = "";
-        // Aseguramos no romper la familia (nunca se corta la familia)
+        numbers = ""; // Eliminar números
+        
+        // Cortar raíz (último recurso, no tocar familia)
         if (root.length > remainingAfterNums) {
            root = root.slice(0, root.length - remainingAfterNums);
         }
       }
     }
-    // Reconstruir
-    sku = forcedFamily + root + numbers + attributes;
+    // Reconstruir con el nuevo orden tras el recorte
+    sku = forcedFamily + root + attributes + numbers;
   }
 
   return sku;
 };
 
-// 3. Componente Visual
+const SkuRow = ({ item }: { item: SkuItem }) => {
+  const isLengthValid = item.code.length <= 10;
+
+  return (
+    <tr className="hover:bg-slate-50/80 transition-colors">
+      <td className="p-3">
+        <span className="inline-block px-1.5 py-0.5 rounded border border-slate-200 bg-white text-[10px] font-mono text-slate-500">
+          {item.family}
+        </span>
+      </td>
+      <td className="p-3">
+        <div className="flex items-center gap-2">
+          <span className="font-mono font-bold text-slate-700 text-sm">{item.code}</span>
+          {isLengthValid ? (
+            <span className="text-[10px] text-emerald-500 font-medium bg-emerald-50 px-1 rounded">
+              OK
+            </span>
+          ) : (
+            <span className="text-[10px] text-red-500 font-medium bg-red-50 px-1 rounded flex items-center">
+              <AlertTriangle className="w-3 h-3 mr-0.5" /> {item.code.length} chars
+            </span>
+          )}
+        </div>
+      </td>
+      <td className="p-3 text-sm text-slate-600 truncate max-w-xs" title={item.description}>
+        {item.description}
+      </td>
+    </tr>
+  );
+};
+
 export const AutoSkuModule: React.FC = () => {
   const [inputText, setInputText] = useState('');
-  const [selectedFamily, setSelectedFamily] = useState<string>('CNSM'); // Default seguro
+  const [selectedFamily, setSelectedFamily] = useState<string>('CNSM');
   const [generatedItems, setGeneratedItems] = useState<SkuItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -118,7 +142,6 @@ export const AutoSkuModule: React.FC = () => {
     setLoading(true);
     setGeneratedItems([]);
 
-    // Simulamos un pequeño delay (300ms) para que la UI no parpadee demasiado rápido
     setTimeout(() => {
       const lines = inputText.split('\n');
       const items: SkuItem[] = [];
@@ -126,14 +149,8 @@ export const AutoSkuModule: React.FC = () => {
       lines.forEach(line => {
         const desc = line.trim();
         if (!desc) return;
-
         const code = generateSkuAlgorithm(desc, selectedFamily);
-
-        items.push({
-          code,
-          description: desc,
-          family: selectedFamily
-        });
+        items.push({ code, description: desc, family: selectedFamily });
       });
 
       setGeneratedItems(items);
@@ -157,8 +174,6 @@ export const AutoSkuModule: React.FC = () => {
 
   return (
     <div className="max-w-6xl mx-auto p-4 md:p-8 animate-fadeIn pb-20">
-      
-      {/* Header Module */}
       <div className="flex items-center gap-3 mb-8 pb-6 border-b border-slate-200">
         <div className="p-3 bg-gradient-to-br from-indigo-600 to-blue-600 rounded-xl text-white shadow-lg">
           <Cpu className="w-6 h-6" />
@@ -170,12 +185,8 @@ export const AutoSkuModule: React.FC = () => {
       </div>
 
       <div className="grid lg:grid-cols-12 gap-8">
-        
-        {/* INPUT PANEL */}
         <div className="lg:col-span-5 space-y-6">
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 h-full flex flex-col">
-            
-            {/* Family Selector */}
             <div className="mb-4">
               <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
                 1. Selección de Familia (Obligatorio)
@@ -196,7 +207,6 @@ export const AutoSkuModule: React.FC = () => {
               </div>
             </div>
 
-            {/* Input Textarea */}
             <div className="mb-6 flex-1">
               <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
                 2. Lista de Artículos (Una por línea)
@@ -217,7 +227,6 @@ Cojín cuadrado 45x45 loneta gris`}
               </div>
             </div>
 
-            {/* Action Button */}
             <button
               onClick={handleGenerate}
               disabled={loading || !inputText.trim()}
@@ -230,28 +239,24 @@ Cojín cuadrado 45x45 loneta gris`}
               {loading ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Calculator className="w-5 h-5" />}
               {loading ? 'Procesando...' : 'Generar Códigos SKU'}
             </button>
-            
           </div>
 
           <div className="bg-blue-50 border border-blue-100 p-4 rounded-xl">
              <h4 className="text-blue-800 font-bold text-xs uppercase mb-2 flex items-center gap-1">
-               <FileText className="w-3 h-3" /> Algoritmo V1.0
+               <FileText className="w-3 h-3" /> Algoritmo V2.1 (Fam+Raiz+Atr+Num)
              </h4>
              <ul className="text-xs text-blue-700/80 space-y-1 list-disc pl-4">
                <li><strong>Familia:</strong> 4 caracteres fijos (ej. CNSM).</li>
                <li><strong>Raíz:</strong> 1ª palabra sin vocales (CINTA &rarr; CNT).</li>
-               <li><strong>Medida:</strong> Dígitos encontrados (25).</li>
                <li><strong>Atributos:</strong> Iniciales del resto (Doble Cara &rarr; DC).</li>
+               <li><strong>Medida:</strong> Dígitos encontrados (25).</li>
                <li><strong>Límite:</strong> 10 caracteres estricto.</li>
              </ul>
           </div>
         </div>
 
-        {/* OUTPUT PANEL */}
         <div className="lg:col-span-7 h-full flex flex-col">
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200 flex-1 flex flex-col overflow-hidden min-h-[500px]">
-             
-             {/* Toolbar */}
              <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
                <div className="flex items-center gap-2">
                  <span className="px-2 py-1 bg-white border border-slate-200 rounded text-xs font-bold text-slate-600 shadow-sm">
@@ -277,7 +282,6 @@ Cojín cuadrado 45x45 loneta gris`}
                </div>
              </div>
 
-             {/* Table */}
              <div className="flex-1 overflow-auto">
                <table className="w-full text-left border-collapse">
                  <thead className="bg-slate-50 sticky top-0 z-10">
@@ -298,44 +302,15 @@ Cojín cuadrado 45x45 loneta gris`}
                        </td>
                      </tr>
                    ) : (
-                     generatedItems.map((item, idx) => {
-                       // Extracción de lógica condicional fuera del JSX para evitar errores de compilación TS1382
-                       const isLengthValid = item.code.length <= 10;
-                       
-                       return (
-                         <tr key={idx} className="hover:bg-slate-50/80 transition-colors">
-                           <td className="p-3">
-                             <span className="inline-block px-1.5 py-0.5 rounded border border-slate-200 bg-white text-[10px] font-mono text-slate-500">
-                               {item.family}
-                             </span>
-                           </td>
-                           <td className="p-3">
-                             <div className="flex items-center gap-2">
-                               <span className="font-mono font-bold text-slate-700 text-sm">{item.code}</span>
-                               {isLengthValid ? (
-                                 <span className="text-[10px] text-emerald-500 font-medium bg-emerald-50 px-1 rounded">
-                                   OK
-                                 </span>
-                               ) : (
-                                 <span className="text-[10px] text-red-500 font-medium bg-red-50 px-1 rounded flex items-center">
-                                   <AlertTriangle className="w-3 h-3 mr-0.5" /> {item.code.length} chars
-                                 </span>
-                               )}
-                             </div>
-                           </td>
-                           <td className="p-3 text-sm text-slate-600 truncate max-w-xs" title={item.description}>
-                             {item.description}
-                           </td>
-                         </tr>
-                       );
-                     })
+                     generatedItems.map((item, idx) => (
+                       <SkuRow key={idx} item={item} />
+                     ))
                    )}
                  </tbody>
                </table>
              </div>
           </div>
         </div>
-
       </div>
     </div>
   );
