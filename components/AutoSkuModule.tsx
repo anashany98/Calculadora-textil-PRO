@@ -1,3 +1,5 @@
+
+// AutoSkuModule v3.0 - Strict Logic Update (Raiz 3, Medida 3, Prioridad F-R-M)
 import React, { useState } from 'react';
 import { Sparkles, Copy, Download, AlertTriangle, CheckCircle2, Package, ArrowRight, RefreshCw, FileText, Cpu, Calculator } from 'lucide-react';
 import * as XLSX from 'xlsx';
@@ -26,7 +28,7 @@ export const FAMILY_DEFINITIONS = [
   { code: "MO", name: "Mano de Obra", examples: "Instalaciones, tapizados" }
 ];
 
-// 2. Algoritmo Determinista (Lógica Estricta JavaScript) - v2.1
+// 2. Algoritmo Determinista V3.0 (Rígido + Prioridad Medida)
 const generateSkuAlgorithm = (description: string, forcedFamily: string): string => {
   // A. Limpieza
   const cleanDesc = description.toUpperCase()
@@ -38,26 +40,28 @@ const generateSkuAlgorithm = (description: string, forcedFamily: string): string
 
   if (words.length === 0) return (forcedFamily + "GEN").slice(0, 10);
 
-  // B. Extracción
+  // B. Extracción de Componentes con Nuevos Límites V3.0
   let root = "";
   let numbers = "";
   let attributes = "";
 
-  // 1. Raíz
+  // 1. Raíz (R) -> Máximo 3 caracteres (V3.0)
   if (words.length > 0) {
     const firstWord = words[0];
     const noVowels = firstWord.replace(/[AEIOU]/g, '');
     const baseRoot = noVowels.length > 0 ? noVowels : firstWord;
-    root = baseRoot.slice(0, 4); 
+    // Límite estricto V3.0: 3 caracteres
+    root = baseRoot.slice(0, 3); 
   }
 
-  // 2. Medida (Números)
+  // 2. Medida (M) -> Máximo 3 dígitos (V3.0)
   const allNumbers = cleanDesc.match(/\d+/g);
   if (allNumbers) {
-    numbers = allNumbers.join('');
+    // Concatenar todos y truncar a 3
+    numbers = allNumbers.join('').slice(0, 3);
   }
 
-  // 3. Atributos
+  // 3. Atributos (A) -> Variable (Se calculan todos, luego se truncan)
   for (let i = 1; i < words.length; i++) {
     const w = words[i];
     if (!/^\d+$/.test(w)) {
@@ -65,38 +69,28 @@ const generateSkuAlgorithm = (description: string, forcedFamily: string): string
     }
   }
 
-  // C. Ensamblaje (NUEVO ORDEN: Familia + Raíz + Atributos + Medida)
-  let sku = forcedFamily + root + attributes + numbers;
+  // C. Ensamblaje V3.0: F + R + A + M
+  // Calculamos cuánto espacio queda para Atributos (A)
+  // Max Total = 10.
+  // Espacio Ocupado por Fijos = F(4) + R(len) + M(len)
+  const usedSpace = forcedFamily.length + root.length + numbers.length;
+  const availableSpaceForA = 10 - usedSpace;
 
-  // D. Truncado Inteligente (Prioridad de sacrificio: Atributos -> Números -> Raíz)
-  if (sku.length > 10) {
-    const excess = sku.length - 10;
-    
-    if (attributes.length >= excess) {
-      // Cortar atributos primero
-      attributes = attributes.slice(0, attributes.length - excess);
-    } else {
-      const remainingAfterAttrs = excess - attributes.length;
-      attributes = ""; // Eliminar atributos si no es suficiente
-      
-      if (numbers.length >= remainingAfterAttrs) {
-        // Cortar números (medida)
-        numbers = numbers.slice(0, numbers.length - remainingAfterAttrs);
-      } else {
-        const remainingAfterNums = remainingAfterAttrs - numbers.length;
-        numbers = ""; // Eliminar números
-        
-        // Cortar raíz (último recurso, no tocar familia)
-        if (root.length > remainingAfterNums) {
-           root = root.slice(0, root.length - remainingAfterNums);
-        }
-      }
-    }
-    // Reconstruir con el nuevo orden tras el recorte
-    sku = forcedFamily + root + attributes + numbers;
+  // D. Truncado Rígido (Sacrificio exclusivo de Atributos)
+  let finalAttributes = "";
+  
+  if (availableSpaceForA > 0) {
+    finalAttributes = attributes.slice(0, availableSpaceForA);
+  } else {
+    // Si no hay espacio (ej: F=4, R=3, M=3 => Total 10), A desaparece.
+    // Si por error F+R+M > 10 (muy raro con los límites actuales), esto asegura que A no sume.
+    finalAttributes = "";
   }
 
-  return sku;
+  let sku = forcedFamily + root + finalAttributes + numbers;
+
+  // Corte de seguridad final por si F+R+M excede 10 (ej. familia custom > 4 chars)
+  return sku.slice(0, 10);
 };
 
 const SkuRow = ({ item }: { item: SkuItem }) => {
@@ -243,14 +237,14 @@ Cojín cuadrado 45x45 loneta gris`}
 
           <div className="bg-blue-50 border border-blue-100 p-4 rounded-xl">
              <h4 className="text-blue-800 font-bold text-xs uppercase mb-2 flex items-center gap-1">
-               <FileText className="w-3 h-3" /> Algoritmo V2.1 (Fam+Raiz+Atr+Num)
+               <FileText className="w-3 h-3" /> Algoritmo V3.0 (Rígido)
              </h4>
              <ul className="text-xs text-blue-700/80 space-y-1 list-disc pl-4">
-               <li><strong>Familia:</strong> 4 caracteres fijos (ej. CNSM).</li>
-               <li><strong>Raíz:</strong> 1ª palabra sin vocales (CINTA &rarr; CNT).</li>
-               <li><strong>Atributos:</strong> Iniciales del resto (Doble Cara &rarr; DC).</li>
-               <li><strong>Medida:</strong> Dígitos encontrados (25).</li>
-               <li><strong>Límite:</strong> 10 caracteres estricto.</li>
+               <li><strong>Familia (F):</strong> 4 caracteres INTOCABLES.</li>
+               <li><strong>Raíz (R):</strong> Máx. 3 caracteres (sin vocales).</li>
+               <li><strong>Medida (M):</strong> Máx. 3 dígitos.</li>
+               <li><strong>Atributos (A):</strong> Variable (1º en sacrificarse).</li>
+               <li><strong>Orden:</strong> F + R + A + M.</li>
              </ul>
           </div>
         </div>
