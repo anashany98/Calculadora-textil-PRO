@@ -1,5 +1,4 @@
-
-// AutoSkuModule v3.0 - Strict Logic Update (Raiz 3, Medida 3, Prioridad F-R-M)
+// AutoSkuModule v3.1 - Strict Logic Update (NO Attributes)
 import React, { useState } from 'react';
 import { Sparkles, Copy, Download, AlertTriangle, CheckCircle2, Package, ArrowRight, RefreshCw, FileText, Cpu, Calculator } from 'lucide-react';
 import * as XLSX from 'xlsx';
@@ -28,7 +27,7 @@ export const FAMILY_DEFINITIONS = [
   { code: "MO", name: "Mano de Obra", examples: "Instalaciones, tapizados" }
 ];
 
-// 2. Algoritmo Determinista V3.0 (Rígido + Prioridad Medida)
+// 2. Algoritmo Determinista V3.1 (Sin Atributos)
 const generateSkuAlgorithm = (description: string, forcedFamily: string): string => {
   // A. Limpieza
   const cleanDesc = description.toUpperCase()
@@ -40,56 +39,33 @@ const generateSkuAlgorithm = (description: string, forcedFamily: string): string
 
   if (words.length === 0) return (forcedFamily + "GEN").slice(0, 10);
 
-  // B. Extracción de Componentes con Nuevos Límites V3.0
+  // B. Extracción de Componentes
   let root = "";
   let numbers = "";
-  let attributes = "";
 
-  // 1. Raíz (R) -> Máximo 3 caracteres (V3.0)
+  // 1. Raíz (R) -> Máximo 3 caracteres
   if (words.length > 0) {
     const firstWord = words[0];
     const noVowels = firstWord.replace(/[AEIOU]/g, '');
     const baseRoot = noVowels.length > 0 ? noVowels : firstWord;
-    // Límite estricto V3.0: 3 caracteres
+    // Límite estricto V3.1: 3 caracteres
     root = baseRoot.slice(0, 3); 
   }
 
-  // 2. Medida (M) -> Máximo 3 dígitos (V3.0)
+  // 2. Medida (M) -> Máximo 3 dígitos
   const allNumbers = cleanDesc.match(/\d+/g);
   if (allNumbers) {
     // Concatenar todos y truncar a 3
     numbers = allNumbers.join('').slice(0, 3);
   }
 
-  // 3. Atributos (A) -> Variable (Se calculan todos, luego se truncan)
-  for (let i = 1; i < words.length; i++) {
-    const w = words[i];
-    if (!/^\d+$/.test(w)) {
-      attributes += w.charAt(0);
-    }
-  }
+  // 3. Atributos (A) -> ELIMINADO EN V3.1
 
-  // C. Ensamblaje V3.0: F + R + A + M
-  // Calculamos cuánto espacio queda para Atributos (A)
-  // Max Total = 10.
-  // Espacio Ocupado por Fijos = F(4) + R(len) + M(len)
-  const usedSpace = forcedFamily.length + root.length + numbers.length;
-  const availableSpaceForA = 10 - usedSpace;
+  // C. Ensamblaje V3.1: F + R + M
+  // F(4) + R(3) + M(3) = Máximo 10 caracteres.
+  let sku = forcedFamily + root + numbers;
 
-  // D. Truncado Rígido (Sacrificio exclusivo de Atributos)
-  let finalAttributes = "";
-  
-  if (availableSpaceForA > 0) {
-    finalAttributes = attributes.slice(0, availableSpaceForA);
-  } else {
-    // Si no hay espacio (ej: F=4, R=3, M=3 => Total 10), A desaparece.
-    // Si por error F+R+M > 10 (muy raro con los límites actuales), esto asegura que A no sume.
-    finalAttributes = "";
-  }
-
-  let sku = forcedFamily + root + finalAttributes + numbers;
-
-  // Corte de seguridad final por si F+R+M excede 10 (ej. familia custom > 4 chars)
+  // Corte de seguridad final por si acaso
   return sku.slice(0, 10);
 };
 
@@ -237,14 +213,13 @@ Cojín cuadrado 45x45 loneta gris`}
 
           <div className="bg-blue-50 border border-blue-100 p-4 rounded-xl">
              <h4 className="text-blue-800 font-bold text-xs uppercase mb-2 flex items-center gap-1">
-               <FileText className="w-3 h-3" /> Algoritmo V3.0 (Rígido)
+               <FileText className="w-3 h-3" /> Algoritmo V3.1 (Sin Atributos)
              </h4>
              <ul className="text-xs text-blue-700/80 space-y-1 list-disc pl-4">
                <li><strong>Familia (F):</strong> 4 caracteres INTOCABLES.</li>
                <li><strong>Raíz (R):</strong> Máx. 3 caracteres (sin vocales).</li>
                <li><strong>Medida (M):</strong> Máx. 3 dígitos.</li>
-               <li><strong>Atributos (A):</strong> Variable (1º en sacrificarse).</li>
-               <li><strong>Orden:</strong> F + R + A + M.</li>
+               <li><strong>Orden:</strong> F + R + M.</li>
              </ul>
           </div>
         </div>
