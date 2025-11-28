@@ -17,22 +17,11 @@ interface Toast {
   type: 'success' | 'error';
 }
 
-export const FAMILY_DEFINITIONS = [
-  { code: "CNSM", name: "Consumibles", examples: "Cremalleras, hilos, colas" },
-  { code: "HRRJ", name: "Herrajes", examples: "Anillas, soportes, ganchos" },
-  { code: "RIBA", name: "Rieles y Barras", examples: "Perfiles, rieles técnicos" },
-  { code: "MADR", name: "Madera", examples: "Tableros, listones" },
-  { code: "HERR", name: "Herramientas", examples: "Brocas, tornillos" },
-  { code: "ESBT", name: "Espuma y Boata", examples: "Rellenos, guata" },
-  { code: "FUND", name: "Fundas", examples: "Confección de fundas" },
-  { code: "CDRT", name: "Cuadrante", examples: "Cojines" },
-  { code: "SOMB", name: "Sombra", examples: "Toldos completos" },
-  { code: "LNCR", name: "Lencería", examples: "Tejidos varios" },
-  { code: "CORT", name: "Cortinas", examples: "Tejidos de cortina" },
-  { code: "ESTR", name: "Estores", examples: "Paqueto, enrollable" },
-  { code: "MNTL", name: "Mantelería", examples: "Manteles, servilletas" },
-  { code: "MO", name: "Mano de Obra", examples: "Instalaciones, tapizados" }
-];
+interface Family {
+  id: number;
+  code: string;
+  name: string;
+}
 
 // 2. Algoritmo Determinista V3.1 (Sin Atributos)
 const generateSkuAlgorithm = (description: string, forcedFamily: string): string => {
@@ -116,15 +105,21 @@ export const AutoSkuModule: React.FC = () => {
   const [isFetching, setIsFetching] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const [familyMap, setFamilyMap] = useState<Map<string, number>>(new Map());
   const [toast, setToast] = useState<Toast>({ show: false, message: '', type: 'success' });
+  const [families, setFamilies] = useState<Family[]>([]);
 
-  // Cargar las familias al montar el componente para mapear code -> id
+  // Cargar las familias desde la BD al montar el componente
   useEffect(() => {
     const fetchFamilies = async () => {
-      const { data } = await supabase.from('product_families').select('id, code');
-      if (data) {
-        setFamilyMap(new Map(data.map(f => [f.code, f.id])));
+      const { data, error } = await supabase.from('product_families').select('id, code, name').order('code');
+      if (error) {
+        console.error("Error fetching families:", error);
+        showToast("Error al cargar familias de la BD", "error");
+      } else if (data) {
+        setFamilies(data);
+        if (data.length > 0 && !selectedFamily) {
+          setSelectedFamily(data[0].code); // Seleccionar la primera por defecto
+        }
       }
     };
     fetchFamilies();
@@ -213,8 +208,9 @@ export const AutoSkuModule: React.FC = () => {
     if (generatedItems.length === 0) return;
     setIsSaving(true);
 
-    const familyId = familyMap.get(selectedFamily);
-    if (!familyId) {
+    // Encontrar el ID de la familia seleccionada desde el estado
+    const currentFamily = families.find(f => f.code === selectedFamily);
+    if (!currentFamily) {
       showToast(`Error: La familia "${selectedFamily}" no se encontró en la BD.`, 'error');
       setIsSaving(false);
       return;
@@ -223,7 +219,7 @@ export const AutoSkuModule: React.FC = () => {
     const articlesToInsert = generatedItems.map(item => ({
       sku: item.code,
       original_description: item.description,
-      family_id: familyId,
+      family_id: currentFamily.id,
     }));
 
     try {
@@ -266,8 +262,8 @@ export const AutoSkuModule: React.FC = () => {
                   onChange={(e) => setSelectedFamily(e.target.value)}
                   className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-indigo-500 outline-none appearance-none"
                 >
-                  {FAMILY_DEFINITIONS.map(f => (
-                    <option key={f.code} value={f.code}>{f.code} - {f.name}</option>
+                  {families.map(f => (
+                    <option key={f.id} value={f.code}>{f.code} - {f.name}</option>
                   ))}
                 </select>
                 <div className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
