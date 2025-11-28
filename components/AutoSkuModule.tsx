@@ -96,6 +96,37 @@ const SkuRow = ({ item }: { item: SkuItem }) => {
   );
 };
 
+// Componente para mostrar los resultados o los estados de carga/vacío
+const ResultsDisplay = ({ isLoading, items, error, children }: { isLoading: boolean, items: SkuItem[], error: string | null, children: React.ReactNode }) => {
+  if (isLoading) {
+    return (
+      <tr>
+        <td colSpan={3} className="p-12 text-center">
+          <RefreshCw className="w-6 h-6 text-slate-400 animate-spin mx-auto mb-3" />
+          <p className="text-slate-400 text-sm font-medium">Cargando datos...</p>
+        </td>
+      </tr>
+    );
+  }
+
+  if (items.length === 0) {
+    return (
+      <tr>
+        <td colSpan={3} className="p-12 text-center">
+          <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
+            <ArrowRight className="w-6 h-6 text-slate-300" />
+          </div>
+          <p className="text-slate-400 text-sm font-medium">Los resultados aparecerán aquí</p>
+          {error && <p className="text-red-500 text-xs mt-2 flex items-center justify-center gap-1"><ServerCrash className="w-3 h-3"/> {error}</p>}
+        </td>
+      </tr>
+    );
+  }
+
+  return <>{children}</>;
+};
+
+
 export const AutoSkuModule: React.FC = () => {
   const [inputText, setInputText] = useState('');
   const [selectedFamily, setSelectedFamily] = useState<string>('');
@@ -107,39 +138,46 @@ export const AutoSkuModule: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [toast, setToast] = useState<Toast>({ show: false, message: '', type: 'success' });
   const [families, setFamilies] = useState<Family[]>([]);
+  const [isLoadingFamilies, setIsLoadingFamilies] = useState(true);
 
   // Cargar las familias desde la BD al montar el componente y establecer la primera por defecto
   useEffect(() => {
     const fetchFamilies = async () => {
-      // No es necesario setIsFetching aquí, el estado de carga es implícito
-      // por la deshabilitación de los campos hasta que `families` se puebla.
+      setIsLoadingFamilies(true);
       const { data, error } = await supabase.from('product_families').select('id, code, name').order('code');
       if (error) {
         console.error("Error fetching families:", error);
         showToast("Error al cargar familias de la BD", "error");
+        setFamilies([]);
       } else if (data) {
         setFamilies(data);
-        // Si hay familias y ninguna está seleccionada, selecciona la primera.
-        if (data.length > 0) {
+        if (data.length > 0 && !selectedFamily) {
           setSelectedFamily(data[0].code); // Seleccionar la primera por defecto
         }
       }
+      setIsLoadingFamilies(false);
     };
     fetchFamilies();
-  }, []);
+  }, [selectedFamily]); // Dependencia en selectedFamily para asegurar que no se resetee si ya tiene valor
 
   const handleGenerate = async () => {
     if (!inputText.trim()) return;
     setLoading(true);
     setGeneratedItems([]);
 
-    setTimeout(() => {
+    // Usamos un proceso asíncrono para no bloquear la UI
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    try {
       const lines = inputText.split('\n');
       const items: SkuItem[] = [];
 
       lines.forEach(line => {
         const desc = line.trim();
         if (!desc) return;
+        if (!selectedFamily) {
+          throw new Error("No se ha seleccionado una familia válida.");
+        }
         const code = generateSkuAlgorithm(desc, selectedFamily);
         items.push({ code, description: desc, family: selectedFamily });
       });
@@ -147,8 +185,11 @@ export const AutoSkuModule: React.FC = () => {
       setGeneratedItems(items);
       setLoading(false);
     }, 300);
+    } catch (error: any) {
+      showToast(error.message, 'error');
+      setLoading(false);
+    }
   };
-
   const handleCopy = () => {
     const csvContent = "CODIGO;DESCRIPCION;FAMILIA\n" + generatedItems.map(i => `${i.code};${i.description};${i.family}`).join('\n');
     navigator.clipboard.writeText(csvContent);
@@ -261,13 +302,14 @@ export const AutoSkuModule: React.FC = () => {
               </label>
               <div className="relative">
                 <select
-                  disabled={families.length === 0}
+                  disabled={isLoadingFamilies || families.length === 0}
                   value={selectedFamily}
                   onChange={(e) => setSelectedFamily(e.target.value)}
                   className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-indigo-500 outline-none appearance-none disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {families.length === 0 && <option>Cargando familias...</option>}
-                  {families.map(f => (
+                  {isLoadingFamilies && <option>Cargando familias...</option>}
+                  {!isLoadingFamilies && families.length === 0 && <option>No se encontraron familias</option>}
+                  {!isLoadingFamilies && families.map(f => (
                     <option key={f.id} value={f.code}>{f.code} - {f.name}</option> 
                   ))}
                 </select>
@@ -282,7 +324,7 @@ export const AutoSkuModule: React.FC = () => {
                 2. Lista de Artículos (Una por línea)
               </label>
               <textarea
-                disabled={families.length === 0}
+                disabled={isLoadingFamilies || families.length === 0}
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
                 placeholder={`Ejemplos:
@@ -300,9 +342,9 @@ Cojín cuadrado 45x45 loneta gris`}
 
             <button
               onClick={handleGenerate}
-              disabled={loading || !inputText.trim() || families.length === 0}
+              disabled={loading || !inputText.trim() || isLoadingFamilies || families.length === 0}
               className={`w-full py-4 rounded-xl font-bold text-white shadow-lg transition-all flex items-center justify-center gap-2 ${
-                loading || !inputText.trim() || families.length === 0
+                loading || !inputText.trim() || isLoadingFamilies || families.length === 0
                 ? 'bg-slate-300 cursor-not-allowed' 
                 : 'bg-slate-900 hover:bg-indigo-600 hover:shadow-indigo-500/30 hover:scale-[1.02]'
               }`}
@@ -378,28 +420,11 @@ Cojín cuadrado 45x45 loneta gris`}
                    </tr>
                  </thead>
                  <tbody className="divide-y divide-slate-100">
-                   {isFetching ? (
-                     <tr>
-                       <td colSpan={3} className="p-12 text-center">
-                         <RefreshCw className="w-6 h-6 text-slate-400 animate-spin mx-auto mb-3" />
-                         <p className="text-slate-400 text-sm font-medium">Cargando datos...</p>
-                       </td>
-                     </tr>
-                   ) : generatedItems.length === 0 ? (
-                     <tr>
-                       <td colSpan={3} className="p-12 text-center">
-                         <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                           <ArrowRight className="w-6 h-6 text-slate-300" />
-                         </div>
-                         <p className="text-slate-400 text-sm font-medium">Los resultados aparecerán aquí</p>
-                         {fetchError && <p className="text-red-500 text-xs mt-2 flex items-center justify-center gap-1"><ServerCrash className="w-3 h-3"/> {fetchError}</p>}
-                       </td>
-                     </tr>
-                   ) : (
+                  <ResultsDisplay isLoading={isFetching || loading} items={generatedItems} error={fetchError}>
                      generatedItems.map((item, idx) => (
                        <SkuRow key={idx} item={item} />
                      ))
-                   )}
+                  </ResultsDisplay>
                  </tbody>
                </table>
              </div>
