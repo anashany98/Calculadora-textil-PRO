@@ -183,10 +183,9 @@ export const AutoSkuModule: React.FC = () => {
       });
 
       setGeneratedItems(items);
-      setLoading(false);
-    }, 300);
     } catch (error: any) {
       showToast(error.message, 'error');
+    } finally {
       setLoading(false);
     }
   };
@@ -421,9 +420,9 @@ Cojín cuadrado 45x45 loneta gris`}
                  </thead>
                  <tbody className="divide-y divide-slate-100">
                   <ResultsDisplay isLoading={isFetching || loading} items={generatedItems} error={fetchError}>
-                     generatedItems.map((item, idx) => (
+                     {generatedItems.map((item, idx) => (
                        <SkuRow key={idx} item={item} />
-                     ))
+                     ))}
                   </ResultsDisplay>
                  </tbody>
                </table>
