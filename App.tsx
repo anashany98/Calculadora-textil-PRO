@@ -10,7 +10,7 @@ import { ResultsTable } from './components/ResultsTable';
 import { AutoSkuModule } from './components/AutoSkuModule';
 
 function App() {
-  // Navigation State l
+  // Navigation State
   const [activeTab, setActiveTab] = useState<'calculator' | 'autosku'>('calculator');
 
   // Calculator State
