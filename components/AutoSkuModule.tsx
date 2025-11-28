@@ -1,7 +1,8 @@
 // AutoSkuModule v3.1 - Strict Logic Update (NO Attributes)
-import React, { useState } from 'react';
-import { Sparkles, Copy, Download, AlertTriangle, CheckCircle2, Package, ArrowRight, RefreshCw, FileText, Cpu, Calculator } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Sparkles, Copy, Download, AlertTriangle, CheckCircle2, Package, ArrowRight, RefreshCw, FileText, Cpu, Calculator, Database, ServerCrash } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import { supabase } from '../utils/supabaseClient';
 
 // 1. Tipos y Constantes
 export interface SkuItem {
@@ -106,6 +107,8 @@ export const AutoSkuModule: React.FC = () => {
   const [generatedItems, setGeneratedItems] = useState<SkuItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [isFetching, setIsFetching] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   const handleGenerate = async () => {
     if (!inputText.trim()) return;
@@ -140,6 +143,42 @@ export const AutoSkuModule: React.FC = () => {
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "SKUs");
     XLSX.writeFile(workbook, "AutoSKU_Export.xlsx");
+  };
+
+  const handleFetchFromDB = async () => {
+    setIsFetching(true);
+    setFetchError(null);
+    setGeneratedItems([]);
+
+    try {
+      const { data, error } = await supabase
+        .from('articles')
+        .select(`
+          sku,
+          original_description,
+          product_families ( code )
+        `)
+        .order('created_at', { ascending: false })
+        .limit(100); // Limitar a los 100 más recientes para no sobrecargar
+
+      if (error) {
+        throw error;
+      }
+
+      if (data) {
+        const items: SkuItem[] = data.map((item: any) => ({
+          code: item.sku,
+          description: item.original_description,
+          family: item.product_families.code,
+        }));
+        setGeneratedItems(items);
+      }
+    } catch (error: any) {
+      console.error("Error fetching from Supabase:", error);
+      setFetchError("No se pudo conectar con la base de datos. Revisa la consola para más detalles.");
+    } finally {
+      setIsFetching(false);
+    }
   };
 
   return (
@@ -233,6 +272,14 @@ Cojín cuadrado 45x45 loneta gris`}
                  </span>
                </div>
                <div className="flex gap-2">
+                 <button
+                   onClick={handleFetchFromDB}
+                   disabled={isFetching}
+                   className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-lg text-xs font-bold transition shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                   title="Cargar artículos desde la Base de Datos"
+                 >
+                   {isFetching ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Database className="w-4 h-4" />} Cargar desde BD
+                 </button>
                  <button 
                    onClick={handleCopy}
                    disabled={generatedItems.length === 0}
@@ -261,13 +308,21 @@ Cojín cuadrado 45x45 loneta gris`}
                    </tr>
                  </thead>
                  <tbody className="divide-y divide-slate-100">
-                   {generatedItems.length === 0 ? (
+                   {isFetching ? (
+                     <tr>
+                       <td colSpan={3} className="p-12 text-center">
+                         <RefreshCw className="w-6 h-6 text-slate-400 animate-spin mx-auto mb-3" />
+                         <p className="text-slate-400 text-sm font-medium">Cargando datos...</p>
+                       </td>
+                     </tr>
+                   ) : generatedItems.length === 0 ? (
                      <tr>
                        <td colSpan={3} className="p-12 text-center">
                          <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
                            <ArrowRight className="w-6 h-6 text-slate-300" />
                          </div>
                          <p className="text-slate-400 text-sm font-medium">Los resultados aparecerán aquí</p>
+                         {fetchError && <p className="text-red-500 text-xs mt-2 flex items-center justify-center gap-1"><ServerCrash className="w-3 h-3"/> {fetchError}</p>}
                        </td>
                      </tr>
                    ) : (
