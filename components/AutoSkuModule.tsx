@@ -98,7 +98,7 @@ const SkuRow = ({ item }: { item: SkuItem }) => {
 
 export const AutoSkuModule: React.FC = () => {
   const [inputText, setInputText] = useState('');
-  const [selectedFamily, setSelectedFamily] = useState<string>('CNSM');
+  const [selectedFamily, setSelectedFamily] = useState<string>('');
   const [generatedItems, setGeneratedItems] = useState<SkuItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -108,16 +108,19 @@ export const AutoSkuModule: React.FC = () => {
   const [toast, setToast] = useState<Toast>({ show: false, message: '', type: 'success' });
   const [families, setFamilies] = useState<Family[]>([]);
 
-  // Cargar las familias desde la BD al montar el componente
+  // Cargar las familias desde la BD al montar el componente y establecer la primera por defecto
   useEffect(() => {
     const fetchFamilies = async () => {
+      // No es necesario setIsFetching aquí, el estado de carga es implícito
+      // por la deshabilitación de los campos hasta que `families` se puebla.
       const { data, error } = await supabase.from('product_families').select('id, code, name').order('code');
       if (error) {
         console.error("Error fetching families:", error);
         showToast("Error al cargar familias de la BD", "error");
       } else if (data) {
         setFamilies(data);
-        if (data.length > 0 && !selectedFamily) {
+        // Si hay familias y ninguna está seleccionada, selecciona la primera.
+        if (data.length > 0) {
           setSelectedFamily(data[0].code); // Seleccionar la primera por defecto
         }
       }
@@ -258,12 +261,14 @@ export const AutoSkuModule: React.FC = () => {
               </label>
               <div className="relative">
                 <select
+                  disabled={families.length === 0}
                   value={selectedFamily}
                   onChange={(e) => setSelectedFamily(e.target.value)}
-                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-indigo-500 outline-none appearance-none"
+                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-indigo-500 outline-none appearance-none disabled:opacity-50 disabled:cursor-not-allowed"
                 >
+                  {families.length === 0 && <option>Cargando familias...</option>}
                   {families.map(f => (
-                    <option key={f.id} value={f.code}>{f.code} - {f.name}</option>
+                    <option key={f.id} value={f.code}>{f.code} - {f.name}</option> 
                   ))}
                 </select>
                 <div className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
@@ -277,13 +282,14 @@ export const AutoSkuModule: React.FC = () => {
                 2. Lista de Artículos (Una por línea)
               </label>
               <textarea
+                disabled={families.length === 0}
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
                 placeholder={`Ejemplos:
 Cinta adhesiva doble cara 25mm
 Riel técnico extensible blanco 2m
 Cojín cuadrado 45x45 loneta gris`}
-                className="w-full h-48 p-4 bg-slate-50 border border-slate-200 rounded-xl text-sm font-mono focus:ring-2 focus:ring-indigo-500 outline-none resize-none"
+                className="w-full h-48 p-4 bg-slate-50 border border-slate-200 rounded-xl text-sm font-mono focus:ring-2 focus:ring-indigo-500 outline-none resize-none disabled:opacity-50 disabled:cursor-not-allowed"
               />
               <div className="text-right mt-1">
                 <span className="text-[10px] text-slate-400">
@@ -294,9 +300,9 @@ Cojín cuadrado 45x45 loneta gris`}
 
             <button
               onClick={handleGenerate}
-              disabled={loading || !inputText.trim()}
+              disabled={loading || !inputText.trim() || families.length === 0}
               className={`w-full py-4 rounded-xl font-bold text-white shadow-lg transition-all flex items-center justify-center gap-2 ${
-                loading || !inputText.trim()
+                loading || !inputText.trim() || families.length === 0
                 ? 'bg-slate-300 cursor-not-allowed' 
                 : 'bg-slate-900 hover:bg-indigo-600 hover:shadow-indigo-500/30 hover:scale-[1.02]'
               }`}
