@@ -1,6 +1,6 @@
 // AutoSkuModule v3.1 - Strict Logic Update (NO Attributes)
 import React, { useState, useEffect } from 'react';
-import { Sparkles, Copy, Download, AlertTriangle, CheckCircle2, Package, ArrowRight, RefreshCw, FileText, Cpu, Calculator, Database, ServerCrash } from 'lucide-react';
+import { Sparkles, Copy, Download, AlertTriangle, CheckCircle2, Package, ArrowRight, RefreshCw, FileText, Cpu, Calculator, Database, ServerCrash, Save, Check, X } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { supabase } from '../utils/supabaseClient';
 
@@ -9,6 +9,12 @@ export interface SkuItem {
   code: string;
   description: string;
   family: string;
+}
+
+interface Toast {
+  show: boolean;
+  message: string;
+  type: 'success' | 'error';
 }
 
 export const FAMILY_DEFINITIONS = [
@@ -109,6 +115,20 @@ export const AutoSkuModule: React.FC = () => {
   const [copied, setCopied] = useState(false);
   const [isFetching, setIsFetching] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [familyMap, setFamilyMap] = useState<Map<string, number>>(new Map());
+  const [toast, setToast] = useState<Toast>({ show: false, message: '', type: 'success' });
+
+  // Cargar las familias al montar el componente para mapear code -> id
+  useEffect(() => {
+    const fetchFamilies = async () => {
+      const { data } = await supabase.from('product_families').select('id, code');
+      if (data) {
+        setFamilyMap(new Map(data.map(f => [f.code, f.id])));
+      }
+    };
+    fetchFamilies();
+  }, []);
 
   const handleGenerate = async () => {
     if (!inputText.trim()) return;
@@ -145,6 +165,13 @@ export const AutoSkuModule: React.FC = () => {
     XLSX.writeFile(workbook, "AutoSKU_Export.xlsx");
   };
 
+  const showToast = (message: string, type: 'success' | 'error') => {
+    setToast({ show: true, message, type });
+    setTimeout(() => {
+      setToast({ show: false, message: '', type: 'success' });
+    }, 3000);
+  };
+
   const handleFetchFromDB = async () => {
     setIsFetching(true);
     setFetchError(null);
@@ -172,12 +199,49 @@ export const AutoSkuModule: React.FC = () => {
           family: item.product_families.code,
         }));
         setGeneratedItems(items);
+        showToast(`${items.length} artículos cargados desde la BD.`, 'success');
       }
     } catch (error: any) {
       console.error("Error fetching from Supabase:", error);
       setFetchError("No se pudo conectar con la base de datos. Revisa la consola para más detalles.");
     } finally {
       setIsFetching(false);
+    }
+  };
+
+  const handleSaveToDB = async () => {
+    if (generatedItems.length === 0) return;
+    setIsSaving(true);
+
+    const familyId = familyMap.get(selectedFamily);
+    if (!familyId) {
+      showToast(`Error: La familia "${selectedFamily}" no se encontró en la BD.`, 'error');
+      setIsSaving(false);
+      return;
+    }
+
+    const articlesToInsert = generatedItems.map(item => ({
+      sku: item.code,
+      original_description: item.description,
+      family_id: familyId,
+    }));
+
+    try {
+      const { error } = await supabase.from('articles').insert(articlesToInsert, {
+        // 'ignoreDuplicates: true' evita que la operación falle si un SKU ya existe.
+        // Quítalo si prefieres que falle para saber qué SKUs son duplicados.
+        upsert: false, 
+      });
+
+      if (error && error.code !== '23505') { // 23505 es el código de violación de unicidad
+        throw error;
+      }
+      showToast('¡Artículos guardados en la base de datos!', 'success');
+    } catch (error: any) {
+      console.error("Error saving to Supabase:", error);
+      showToast('Error al guardar. Revisa la consola.', 'error');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -281,6 +345,14 @@ Cojín cuadrado 45x45 loneta gris`}
                    {isFetching ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Database className="w-4 h-4" />} Cargar desde BD
                  </button>
                  <button 
+                   onClick={handleSaveToDB}
+                   disabled={isSaving || generatedItems.length === 0}
+                   className="flex items-center gap-2 px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-xs font-bold transition shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                   title="Guardar los SKUs generados en la Base de Datos"
+                 >
+                   {isSaving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Guardar en BD
+                 </button>
+                 <button 
                    onClick={handleCopy}
                    disabled={generatedItems.length === 0}
                    className="p-2 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition"
@@ -336,6 +408,19 @@ Cojín cuadrado 45x45 loneta gris`}
           </div>
         </div>
       </div>
+
+      {/* Toast Notification */}
+      <div className={`fixed bottom-5 right-5 transition-all duration-300 ${toast.show ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
+        <div className={`flex items-center gap-3 p-3 rounded-lg shadow-2xl text-sm font-semibold ${
+          toast.type === 'success' 
+            ? 'bg-emerald-500 text-white' 
+            : 'bg-red-500 text-white'
+        }`}>
+          {toast.type === 'success' ? <Check className="w-5 h-5" /> : <X className="w-5 h-5" />}
+          {toast.message}
+        </div>
+      </div>
+
     </div>
   );
 };
