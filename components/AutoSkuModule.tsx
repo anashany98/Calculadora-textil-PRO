@@ -227,11 +227,7 @@ export const AutoSkuModule: React.FC = () => {
     }));
 
     try {
-      const { error } = await supabase.from('articles').insert(articlesToInsert, {
-        // 'ignoreDuplicates: true' evita que la operación falle si un SKU ya existe.
-        // Quítalo si prefieres que falle para saber qué SKUs son duplicados.
-        upsert: false, 
-      });
+      const { error } = await supabase.from('articles').insert(articlesToInsert);
 
       if (error && error.code !== '23505') { // 23505 es el código de violación de unicidad
         throw error;
